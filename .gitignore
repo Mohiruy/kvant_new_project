@@ -1,3 +1,12 @@
+.venv/
+__pycache__/
+data/images/
+data/masks_gt/
+outputs/
+*.pt
+*.pth
+*.ckpt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
