@@ -1,0 +1,28 @@
+{
+  "train": [
+    "train947.png",
+    "train1524.png",
+    "train248.png",
+    "train1496.png",
+    "train2021.png",
+    "train2387.png",
+    "train2639.png",
+    "train367.png",
+    "train1630.png",
+    "train2082.png",
+    "train2830.png",
+    "train203.png",
+    "train1142.png",
+    "train2045.png"
+  ],
+  "val": [
+    "train1163.png",
+    "train2688.png",
+    "train1832.png"
+  ],
+  "test": [
+    "train1947.png",
+    "train1034.png",
+    "train1257.png"
+  ]
+}

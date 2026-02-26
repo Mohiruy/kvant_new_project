@@ -1,0 +1,32 @@
+from pathlib import Path
+import cv2
+import torch
+from torch.utils.data import Dataset
+from .utils import read_image_bgr, read_mask_01, resize_img_mask, bgr_to_tensor, mask01_to_tensor
+
+class SegDataset(Dataset):
+    def __init__(self, data_dir: str, files: list, aux_dir: str, resize: int = 256):
+        self.data = Path(data_dir)
+        self.images = self.data / "images"
+        self.gts    = self.data / "masks_gt"
+        self.aux    = Path(aux_dir)
+        self.files = files
+        self.resize = resize
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, i):
+        name = self.files[i]
+        img = read_image_bgr(str(self.images / name))
+        gt  = read_mask_01(str(self.gts / name))
+        aux = read_mask_01(str(self.aux / name))
+
+        img, gt  = resize_img_mask(img, gt, self.resize)
+        img, aux = resize_img_mask(img, aux, self.resize)
+
+        x_img = bgr_to_tensor(img)      # (3,H,W)
+        x_aux = mask01_to_tensor(aux)   # (1,H,W)
+        y     = mask01_to_tensor(gt)    # (1,H,W)
+        x = torch.cat([x_img, x_aux], dim=0)  # (4,H,W)
+        return x, y, name
