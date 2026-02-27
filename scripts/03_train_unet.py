@@ -20,8 +20,8 @@ def main():
     set_seed(42)
     splits = json.loads(Path("data/splits.json").read_text(encoding="utf-8"))
 
-    train_ds = SegDataset("data", splits["train"], args.aux_dir, resize=args.resize)
-    val_ds   = SegDataset("data", splits["val"],   args.aux_dir, resize=args.resize)
+    train_ds = SegDataset("data", "data/splits.json", "train", args.aux_dir, resize=args.resize)
+    val_ds   = SegDataset("data", "data/splits.json", "val",   args.aux_dir, resize=args.resize)
 
     model = UNet(in_channels=4, out_channels=1, base=32)
     out_dir = Path("outputs/models") / args.run_name

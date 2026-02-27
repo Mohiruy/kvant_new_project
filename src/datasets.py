@@ -18,19 +18,16 @@ def read_mask_01(path: str) -> np.ndarray:
     m = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if m is None:
         raise FileNotFoundError(path)
-    # 0/255 -> 0/1 float
     m = (m > 127).astype(np.float32)
     return m
 
 
 def to_tensor_img(img_rgb: np.ndarray) -> torch.Tensor:
-    # H,W,3 -> 3,H,W float [0..1]
     x = np.ascontiguousarray(img_rgb.astype(np.float32) / 255.0)
     return torch.from_numpy(x).permute(2, 0, 1).float()
 
 
 def to_tensor_mask(mask01: np.ndarray) -> torch.Tensor:
-    # H,W -> 1,H,W float {0,1}
     return torch.from_numpy(np.ascontiguousarray(mask01)[None, ...]).float()
 
 
@@ -38,6 +35,11 @@ def resize_img_mask(img_rgb: np.ndarray, mask01: np.ndarray, size: int):
     img_r = cv2.resize(img_rgb, (size, size), interpolation=cv2.INTER_LINEAR)
     m_r = cv2.resize(mask01, (size, size), interpolation=cv2.INTER_NEAREST)
     return img_r, m_r
+
+
+def _mask_name_from_image(name: str, mask_ext: str = ".png") -> str:
+    # "samoyed_64.jpg" -> "samoyed_64.png"
+    return Path(name).stem + mask_ext
 
 
 class SegDataset(Dataset):
@@ -60,15 +62,23 @@ class SegDataset(Dataset):
         return len(self.files)
 
     def __getitem__(self, i):
-        name = self.files[i]
+        name = self.files[i]  # image file name (jpg)
         img = read_image_rgb(str(self.images_dir / name))
-        gt = read_mask_01(str(self.gt_dir / name))
 
-        aux_path = self.aux_dir / name
+        mname = _mask_name_from_image(name, ".png")
+        gt = read_mask_01(str(self.gt_dir / mname))
+
+        aux_path = self.aux_dir / mname
         if aux_path.exists():
             aux = read_mask_01(str(aux_path))
         else:
             aux = np.zeros(gt.shape, dtype=np.float32)
+
+        # align sizes to image
+        if gt.shape[:2] != img.shape[:2]:
+            gt = cv2.resize(gt, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
+        if aux.shape[:2] != img.shape[:2]:
+            aux = cv2.resize(aux, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_NEAREST)
 
         img, gt = resize_img_mask(img, gt, self.resize)
         aux = cv2.resize(aux, (self.resize, self.resize), interpolation=cv2.INTER_NEAREST)
@@ -99,7 +109,7 @@ class PatchSegDataset(Dataset):
             splits = json.load(f)
         self.files = splits[split]
         if len(self.files) == 0:
-            raise ValueError(f"Split '{split}' boвЂsh. splits.json ni tekshiring.")
+            raise ValueError(f"Split '{split}' bo'sh. splits.json ni tekshiring.")
 
     def __len__(self):
         return len(self.files) * self.ppi
@@ -118,12 +128,10 @@ class PatchSegDataset(Dataset):
         return img, gt, aux
 
     def _augment(self, img, gt, aux):
-        # flip
         if self.rng.random() < 0.5:
             img = img[:, ::-1, :]
             gt  = gt[:, ::-1]
             aux = aux[:, ::-1]
-        # brightness/contrast
         if self.rng.random() < 0.5:
             alpha = 0.9 + 0.2 * self.rng.random()
             beta  = -10 + 20 * self.rng.random()
@@ -131,11 +139,13 @@ class PatchSegDataset(Dataset):
         return img, gt, aux
 
     def __getitem__(self, idx):
-        name = self.files[idx % len(self.files)]
+        name = self.files[idx % len(self.files)]  # image jpg
         img = read_image_rgb(str(self.images_dir / name))
-        gt = read_mask_01(str(self.gt_dir / name))
 
-        aux_path = self.aux_dir / name
+        mname = _mask_name_from_image(name, ".png")
+        gt = read_mask_01(str(self.gt_dir / mname))
+
+        aux_path = self.aux_dir / mname
         if aux_path.exists():
             aux = read_mask_01(str(aux_path))
         else:
